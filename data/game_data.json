@@ -1,0 +1,117 @@
+{
+  "spawn_point_names": [
+    "pull ups",
+    "gazebo",
+    "junk",
+    "garage",
+    "driveway",
+    "hedge",
+    "garden north",
+    "garden south"
+  ],
+  "hardpoint_names": [
+    "orange",
+    "yellow",
+    "green",
+    "pink",
+    "purple"
+  ],
+  "spawn_config": {
+    "orange": {
+      "capturing": [
+        "gazebo",
+        "cherry",
+        "junk"
+      ],
+      "other": [
+        "garden north",
+        "garden south",
+        "garage"
+      ],
+      "neutral": [
+        [
+          "garage",
+          "garden north"
+        ],
+        [
+          "garden south"
+        ]
+      ]
+    },
+    "yellow": {
+      "capturing": [
+        "pull ups",
+        "junk"
+      ],
+      "other": [
+        "garage",
+        "garden north"
+      ],
+      "neutral": [
+        [
+          "driveway"
+        ],
+        [
+          "hedge"
+        ]
+      ]
+    },
+    "green": {
+      "capturing": [
+        "junk",
+        "cherry"
+      ],
+      "other": [
+        "pull ups",
+        "garage"
+      ],
+      "neutral": [
+        [
+          "driveway"
+        ],
+        [
+          "pull ups"
+        ]
+      ]
+    },
+    "pink": {
+      "capturing": [
+        "garage",
+        "driveway"
+      ],
+      "other": [
+        "pull ups",
+        "junk",
+        "cherry"
+      ],
+      "neutral": [
+        [
+          "hedge"
+        ],
+        [
+          "junk"
+        ]
+      ]
+    },
+    "purple": {
+      "capturing": [
+        "driveway",
+        "hedge"
+      ],
+      "other": [
+        "garden north",
+        "garden south"
+      ],
+      "neutral": [
+        [
+          "pull ups",
+          "garden north"
+        ],
+        [
+          "junk",
+          "garden south"
+        ]
+      ]
+    }
+  }
+}
