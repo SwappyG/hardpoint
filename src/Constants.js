@@ -16,6 +16,7 @@ const DISCORD_TEXT_CMD = {
   CAPTURE: 'capture',
   RELEASE: 'release',
   RESPAWN: 'respawn',
+  REPEAT_SPAWN: 'repeat_spawn',
   HELP: 'help'
 }
 
@@ -49,40 +50,17 @@ const TRANSITIONS = new Map([
   ])]
 ])
 
-const HARDPOINT_A = 'orange'
-const HARDPOINT_B = 'yellow'
-const HARDPOINT_C = 'green'
-const HARDPOINT_D = 'pink'
-const HARDPOINT_E = 'purple'
-const HARDPOINTS = [HARDPOINT_A, HARDPOINT_B, HARDPOINT_C, HARDPOINT_D, HARDPOINT_E]
-
-const SPAWN_NAMES = ['pull ups', 'gazebo', 'junk', 'garage', 'driveway', 'hedge', 'garden north', 'garden south']
-const SPAWNS = {
-  'orange': {
-    'capturing': ['gazebo', 'cherry', 'junk'],
-    'other': ['garden north', 'garden south', 'garage'],
-    'neutral': [['garage', 'garden north'], ['garden south']],
-  },
-  'yellow': {
-    'capturing': ['pull ups', 'junk'],
-    'other': ['garage', 'garden north'],
-    'neutral': [['driveway'], ['hedge']]
-  },
-  'green': {
-    'capturing': ['junk', 'cherry'],
-    'other': ['pull ups', 'garage'],
-    'neutral': [['driveway'], ['pull ups']]
-  },
-  'pink': {
-    'capturing': ['garage', 'driveway'],
-    'other': ['pull ups', 'junk', 'cherry'],
-    'neutral': [['hedge'], ['junk']]
-  },
-  'purple': {
-    'capturing': ['driveway', 'hedge'],
-    'other': ['garden north', 'garden south'],
-    'neutral': [['pull ups', 'garden north'], ['junk', 'garden south']]
-  }
+const EXPECTED_WORDS = {
+  'point': ['point', 'location', 'objective', 'target'],
+  'capture': ['capture', 'capturing', 'captured'],
+  'release': ['release', 'releasing', 'released'],
+  'dead': ['undead', 'dead', 'died'],
+  'respawn': ['respawn', 'spawn', 'respond'],
+  'add': ['add', 'join'],
+  'team': ['red', 'blue'],
+  'start': ['start', 'begin'],
+  'game': ['game', 'match'],
+  'gm': ['bass', 'base', 'duo', 'proto', 'lan', 'roll', 'row', 'zero', '0']
 }
 
 const INITIAL_DATA = {
@@ -98,11 +76,13 @@ const INITIAL_DATA = {
     'SwappyG': {
       'id': '301155781531795456',
       'team': 'red',
+      'alias': 'Swapnil',
       'is_capturing': false
     },
     'Mercyful': {
       'id': '163784467528417280',
       'team': 'blue',
+      'alias': 'Mercyful',
       'is_capturing': false
     }
   },
@@ -129,8 +109,6 @@ export {
   STATE,
   EVENT,
   TRANSITIONS,
-  HARDPOINTS,
-  SPAWNS,
-  SPAWN_NAMES,
-  INITIAL_DATA
+  INITIAL_DATA,
+  EXPECTED_WORDS
 }
