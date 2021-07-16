@@ -150,15 +150,15 @@ class DiscordClient {
       }
 
       const args = minimist(parseArgsStringToArgv(trimmed_msg.slice(1)))
-      console.log(`Received msg from: [${msg.guild}: ${msg.channel.name}]`)
+      console.log(`\nReceived msg from: [${msg.guild}: ${msg.channel.name}]`)
       this.on_parsed_message({
         'guild_id': msg.guild.id,
         'guild_name': msg.guild.name,
         'channel_id': msg.channel.id,
         'channel_name': msg.channel.name,
-        'user_id': msg.member.user.id,
-        'user_name': msg.member.user.username,
-        'args': args
+        'user_id': msg.author.id,
+        'user_name': msg.author.username,
+        'args': args,
       })
     } catch (e) {
       console.log(`Caught exception while processing message: ${e}`);
