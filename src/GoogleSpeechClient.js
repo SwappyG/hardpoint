@@ -1,6 +1,10 @@
-import { SpeechClient as STTClient } from '@google-cloud/speech'
+import {
+  v1p1beta1 as STT
+} from '@google-cloud/speech'
 import { TextToSpeechClient as TTSClient } from '@google-cloud/text-to-speech'
 import { Duplex } from 'stream';
+
+const STTClient = STT.SpeechClient
 
 const _DEFAULT_CONFIG = {
   encoding: 'LINEAR16',
@@ -12,8 +16,18 @@ const _DEFAULT_CONFIG = {
  * Wraps google text-to-speech (TTS) and speech-to-text (STT) clients
  */
 class GSpeechClient {
-  constructor(project_id, json_key_file) {
+  constructor(project_id, json_key_file, key_phrases) {
     this.config = _DEFAULT_CONFIG
+    if (Array.isArray(key_phrases)) {
+      this.config = {
+        ...this.config,
+        speechContexts: [{
+          phrases: key_phrases,
+          boost: 10
+        }]
+      }
+    }
+
     const credentials = {
       projectId: project_id,
       keyFilename: json_key_file,
@@ -28,8 +42,7 @@ class GSpeechClient {
       const request = {
         audio: { content: buffer.toString('base64') },
         config: this.config,
-      };
-
+      }
 
       const [response] = await this.stt_client.recognize(request);
       const transcription = response.results
