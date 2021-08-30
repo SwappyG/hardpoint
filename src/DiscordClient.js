@@ -2,6 +2,7 @@ import { Constants, Client } from 'discord.js'
 import minimist from 'minimist';
 import { parseArgsStringToArgv } from 'string-argv'
 import { existsSync, readFileSync } from 'fs';
+import { StateMachine } from './StateMachine.js';
 
 const _MIN_SPEECH_DURATION = 1.0
 const _MAX_SPEECH_DURATION = 19.0
@@ -10,12 +11,22 @@ const _BYTES_PER_PACKET = 4
 
 const _DISCORD_PREFIX = '$';
 
+const _SPEAKING_SM_TRANSITIONS = new Map([
+  ['speaking', new Map([
+    ['done', 'idle'],
+    ['phrase', 'speaking']
+  ])],
+  ['idle', new Map([['phrase', 'speaking']])],
+])
+
 class DiscordClient {
   constructor(token_file_path, on_parsed_message, tts_engine) {
     this.on_parsed_message = on_parsed_message
     this.voice_connections = new Map()
     this.client = new Client()
     this.tts_engine = tts_engine
+    this.streams = []
+    this.is_speaking = false
 
     this.client.on(Constants.Events.CLIENT_READY, this._on_discord_ready)
     this.client.on(Constants.Events.MESSAGE_CREATE, this._on_discord_message)
@@ -25,6 +36,16 @@ class DiscordClient {
     }
 
     this.client.login(JSON.parse(readFileSync(token_file_path)).discord_token)
+
+    this.streams_interval = setInterval(() => {
+      if (!this.is_speaking) {
+        const elem = this.streams.shift()
+        if (elem !== undefined) {
+          this.is_speaking = true
+          this.speak(elem.guild_id, elem.stream)
+        }
+      }
+    })
   }
 
   get_channels = (guild_id, channel_type) => {
@@ -80,16 +101,14 @@ class DiscordClient {
 
   speak = (guild_id, stream) => {
     if (!this.voice_connections.has(guild_id)) {
-      console.log(`invalid guild id: ${guild_id}, not valid voice connections`)
-      return
-    }
-
-    if (!this.voice_connections.has(guild_id)) {
       console.log(`No voice connection for guild [${guild_id}]`)
-      return
+      return false
     }
 
-    this.voice_connections.get(guild_id).play(stream)
+    const stream_dispatcher = this.voice_connections.get(guild_id).play(stream)
+    stream_dispatcher.on('speaking', (value) => {
+      this.is_speaking = value
+    })
   }
 
   leave_voice_channel = (guild_id) => {
@@ -108,7 +127,12 @@ class DiscordClient {
     }
 
     if ((!no_voice) && this.voice_connections.has(guild_id)) {
-      this.tts_engine(text).then((text) => { this.speak(guild_id, text) })
+      this.tts_engine(text).then((stream) => {
+        this.streams.push({
+          'stream': stream,
+          'guild_id': guild_id,
+        })
+      })
     }
 
     const text_channel = this.client.channels.cache.get(text_channel_id)

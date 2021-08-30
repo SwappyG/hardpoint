@@ -1,6 +1,6 @@
 {
   "spawn_point_names": [
-    "pull ups",
+    "back wall",
     "gazebo",
     "junk",
     "garage",
@@ -12,7 +12,6 @@
   "hardpoint_names": [
     "shed",
     "grill",
-    "AC",
     "basement",
     "tree"
   ],
@@ -53,24 +52,6 @@
         ],
         [
           "hedge"
-        ]
-      ]
-    },
-    "AC": {
-      "capturing": [
-        "junk",
-        "cherry"
-      ],
-      "other": [
-        "pull ups",
-        "garage"
-      ],
-      "neutral": [
-        [
-          "driveway"
-        ],
-        [
-          "pull ups"
         ]
       ]
     },

@@ -52,15 +52,22 @@ const TRANSITIONS = new Map([
 
 const EXPECTED_WORDS = {
   'point': ['point', 'location', 'objective', 'target'],
-  'capture': ['capture', 'capturing', 'captured'],
-  'release': ['release', 'releasing', 'released'],
+  'capture': ['take', 'took', 'taking', 'capture', 'capturing', 'captured'],
+  'release': ['release', 'releasing', 'released', 'stop', 'leave'],
   'dead': ['undead', 'dead', 'died'],
+  'i': ['I', 'I\'m', 'I am'],
   'respawn': ['respawn', 'spawn', 'respond'],
   'add': ['add', 'join'],
-  'team': ['red', 'blue'],
+  'team_name': ['red', 'blue'],
+  'team': ['team'],
   'start': ['start', 'begin'],
   'game': ['game', 'match'],
-  'gm': ['bass', 'base', 'duo', 'proto', 'lan', 'roll', 'row', 'zero', '0']
+  'last': ['repeat', 'last', 'prev', 'previous'],
+  'gm': ['duo', 'lan', 'zero', '0'],
+  'seize': ['secure', 'bag', 'seize', 'seas', 'securing', 'seizing', 'secured', 'bagged', 'seized'],
+  'cancel': ['cancel', 'end'],
+  'alias': ['alias', 'elias', 'name'],
+  'switch': ['change', 'switch']
 }
 
 const INITIAL_DATA = {
@@ -73,18 +80,46 @@ const INITIAL_DATA = {
     'voice_channel_name': null,
   },
   'players': {
-    'SwappyG': {
-      'id': '301155781531795456',
-      'team': 'red',
-      'alias': 'Swapnil',
-      'is_capturing': false
+    "SwappyG": {
+      "id": "301155781531795456",
+      "team": "red",
+      "alias": "Swapnil",
+      "deaths": 0,
+      "latest_spawn_point": null,
+      "is_capturing": false
     },
-    'Mercyful': {
-      'id': '163784467528417280',
-      'team': 'blue',
-      'alias': 'Mercyful',
-      'is_capturing': false
-    }
+    "Philip L": {
+      "id": "391454066359795714",
+      "team": "blue",
+      "alias": "Philip",
+      "deaths": 0,
+      "latest_spawn_point": null,
+      "is_capturing": false
+    },
+    "DannVong": {
+      "id": "346212613765464067",
+      "team": "blue",
+      "alias": "Daniel",
+      "deaths": 0,
+      "latest_spawn_point": null,
+      "is_capturing": false
+    },
+    "raja2410": {
+      "id": "509081540886528000",
+      "team": "red",
+      "alias": "Amandeep",
+      "deaths": 0,
+      "latest_spawn_point": null,
+      "is_capturing": false
+    },
+    "restarunts": {
+      "id": "870447441978216448",
+      "team": "blue",
+      "alias": "Ankit",
+      "deaths": 0,
+      "latest_spawn_point": null,
+      "is_capturing": false
+    },
   },
   'start_time': Date.now(),
   'game_timer': 0.0,

@@ -108,13 +108,28 @@ class HardPoint {
       return this.event_start(msg)
     }
 
+    if (this._detected(tokens, [WORDS['gm'], WORDS['game'], WORDS['cancel']])) {
+      msg['args'] = { '_': ['cancel'] }
+      return this.event_cancel(msg)
+    }
+
     if (this._detected(tokens, [WORDS['gm'], WORDS['dead'], WORDS['respawn']])) {
       msg['args'] = { '_': ['respawn'], 'name': msg.user_name }
       return this.event_respawn(msg)
     }
 
+    if (this._detected(tokens, [WORDS['gm'], WORDS['last'], WORDS['respawn']])) {
+      msg['args'] = { '_': ['repeat'], 'name': msg.user_name }
+      return this.event_repeat_spawn(msg)
+    }
+
     if (this._detected(tokens, [WORDS['gm'], WORDS['point'], WORDS['capture']])) {
-      msg['args'] = { '_': ['capture'], 'name': msg.user_name }
+      msg['args'] = { '_': ['capture'], 'name': msg.user_name, 'seize': false }
+      return this.event_capture(msg)
+    }
+
+    if (this._detected(tokens, [WORDS['gm'], WORDS['seize'], WORDS['point']])) {
+      msg['args'] = { '_': ['capture'], 'name': msg.user_name, 'seize': true }
       return this.event_capture(msg)
     }
 
@@ -123,7 +138,7 @@ class HardPoint {
       return this.event_release(msg)
     }
 
-    if (this._detected(tokens, [WORDS['gm'], WORDS['add'], WORDS['team']])) {
+    if (this._detected(tokens, [WORDS['gm'], WORDS['add'], WORDS['team_name']])) {
       msg['args'] = {
         '_': ['player', 'add'],
         'name': msg.user_name,
@@ -131,20 +146,29 @@ class HardPoint {
       }
       return this.event_player(msg)
     }
-  }
 
-  _event_capture_or_release = (msg, is_capturing) => {
-    return this.sm.push_event(EVENT.GAME_UPDATE, (data, set_data) => {
-      const player_name = msg.args['name'] ?? msg.user_name
-      const player = data.players[player_name]
-      if (player === undefined) {
+    if (this._detected(tokens, [WORDS['gm'], WORDS['alias']])) {
+      const index = tokens.findIndex((token) => token === 'to')
+      if (index === -1 || (index + 1 >= tokens.length)) {
+        this._log(f`Couldn't determine alias from [${tokens.join(' ')}]`)
         return
       }
 
-      set_data(['players', player_name, 'is_capturing'], is_capturing)
-      this._log(`${player.alias} is ${is_capturing ? 'capturing' : 'not capturing'} the hard point`, data.discord)
-      return true
-    })
+      msg['args'] = {
+        '_': ['player', 'set'],
+        'name': msg.user_name,
+        'alias': tokens[index + 1]
+      }
+      return this.event_player_set(msg)
+    }
+
+    if (this._detected(tokens, [WORDS['gm'], WORDS['switch'], WORDS['team']])) {
+      msg['args'] = {
+        '_': ['player', 'switch'],
+        'name': msg.user_name,
+      }
+      return this.event_player_switch(msg)
+    }
   }
 
   get_spawn_options = ({ owner, team, other_team, latest_team_spawn, latest_other_team_spawn, active_point_spawns }) => {
@@ -195,29 +219,32 @@ class HardPoint {
   get_clock_time_string = (t) => {
     const secs = t % 60
     const mins = Math.floor(t / 60)
-    return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`
+    return `${mins < 10 ? '0' : ''} ${mins}: ${secs < 10 ? '0' : ''} ${secs} `
   }
 
   score_interval_func = (set_data, get_data) => {
     const data = get_data()
 
     // don't spam too much
-    if (Math.floor((Date.now() - data.start_time) / 1000) % 10 == 0) {
+    const sec = Math.floor((Date.now() - data.start_time) / 1000)
+    if (sec % 10 == 0) {
       const game_status =
         `[${this.get_clock_time_string(data.game_timer)}] | ` +
         `Red ${data.red_team_score} vs ${data.blue_team_score} Blue\n` +
         `Hardpoint: ${data.active_point} [${data.hardpoint_owner}]\n` +
         `Capturing: ${Object.keys(data.players).map((name) => {
           return `\n  - ${name} ${data.players[name].is_capturing ? 'is' : 'is not'} capturing`
-        })}` + `\n\n`
+        })
+        } ` + `\n\n`
       this._log(game_status, { ...data.discord, 'no_voice': true })
-
+    }
+    if (sec % 20 == 0) {
       if (data.red_team_score > data.blue_team_score) {
-        this._log(`red leads ${data.red_team_score} to ${data.blue_team_score}`, data.discord)
+        this._log(`${data.red_team_score} to ${data.blue_team_score} red`, data.discord)
       } else if (data.red_team_score < data.blue_team_score) {
-        this._log(`blue leads ${data.blue_team_score} to ${data.red_team_score}`, data.discord)
+        this._log(`${data.blue_team_score} to ${data.red_team_score} blue`, data.discord)
       } else {
-        this._log(`game tied at ${data.blue_team_score}`, data.discord)
+        this._log(`tied at ${data.blue_team_score} `, data.discord)
       }
     }
 
@@ -226,7 +253,7 @@ class HardPoint {
     const hardpoint_owner = this.get_hardpoint_owner(capture_tally)
     set_data('hardpoint_owner', hardpoint_owner)
     if (hardpoint_owner !== prev_owner) {
-      this._log(`The hardpoint is now ${hardpoint_owner}`)
+      this._log(`hardpoint is ${hardpoint_owner} `, data.discord)
     }
 
     switch (hardpoint_owner) {
@@ -249,7 +276,7 @@ class HardPoint {
         }
 
         if ((data.game_time_limit - data.game_timer) <= 10) {
-          this._log(`${data.game_time_limit - data.game_timer}`, data.discord)
+          this._log(`${data.game_time_limit - data.game_timer} `, data.discord)
         }
         break
     }
@@ -269,35 +296,33 @@ class HardPoint {
       set_data(['players', name, 'is_capturing'], false)
     }
     set_data('active_point', next_point)
-    this._log(`the new hardpoint is [${next_point}]`, data.discord)
+    this._log(`the new hardpoint is[${next_point}]`, data.discord)
   }
 
   event_attach_async_helper = async (msg, data, set_data) => {
     const args = msg.args
-    const channels = this.discord_client.get_channels(msg.guild_id, args.type)
-    if (!channels.has(args.name)) {
-      this._log(`invalid channel name [${args.name}]`, data.discord, msg.user_id)
+    const name = msg.args.name ?? 'General'
+    const type = msg.args.type ?? 'voice'
+    const channels = this.discord_client.get_channels(msg.guild_id, type)
+    if (channels === undefined) {
       return
     }
 
-    const channel_id = channels.get(args.name)
-    set_data(['discord', `${args.type}_channel_id`], channel_id)
-    set_data(['discord', `${args.type}_channel_name`], args.name)
-    this._log(`attached to ${args.type} channel ${args.name}`, data.discord, msg.user_id)
+    const channel_id = channels.get(name)
+    set_data(['discord', `${type}_channel_id`], channel_id)
+    set_data(['discord', `${type}_channel_name`], name)
 
-    if (args.type === 'voice') {
+    if (type === 'voice') {
       await this.discord_client.join_voice_channel(channel_id, async (msg) => {
         await this._on_discord_voice_message(msg)
       })
+      this._log(`attached to voice channel ${name} `, data.discord, msg.user_id)
+    } else {
+      this._log(`attached to text channel ${name} `, data.discord, msg.user_id)
     }
   }
 
   event_attach = (msg) => {
-    const args = msg.args
-    if (!this._verify_args(args, ['type', 'name'], msg)) {
-      return
-    }
-
     const on_success = (data, set_data) => {
       // run our async helper, with a done event pushed on completion
       this.event_attach_async_helper(msg, data, set_data).then(() => {
@@ -313,7 +338,27 @@ class HardPoint {
   }
 
   event_capture = (msg) => {
-    return this._event_capture_or_release(msg, true)
+    return this.sm.push_event(EVENT.GAME_UPDATE, (data, set_data) => {
+      const player_name = msg.args['name'] ?? msg.user_name
+      const player = data.players[player_name]
+      if (player === undefined) {
+        return
+      }
+
+      if (msg.args['seize'] === true) {
+        for (const name in data.players) {
+          if (data.players[name].team != data.players[player_name].team) {
+            set_data(['players', name, 'is_capturing'], false)
+          }
+        }
+        this._log(`${player.alias} seized the hardpoint`, data.discord)
+      } else {
+        this._log(`${player.alias} is capturing the hardpoint`, data.discord)
+      }
+      set_data(['players', player_name, 'is_capturing'], true)
+
+      return true
+    })
   }
 
   event_connect = (msg) => {
@@ -322,7 +367,7 @@ class HardPoint {
       set_data(['discord', 'guild_name'], msg.guild_name)
       set_data(['discord', 'text_channel_id'], msg.channel_id)
       set_data(['discord', 'text_channel_name'], msg.channel_name)
-      this._log(`connected to [${msg.guild_name}: ${msg.channel_name}]`, get_data().discord, msg.user_id)
+      this._log(`connected to[${msg.guild_name}: ${msg.channel_name}]`, get_data().discord, msg.user_id)
       return true
     })
   }
@@ -330,7 +375,7 @@ class HardPoint {
   event_detach = (msg) => {
     return this.sm.push_event(EVENT.SETTINGS_UPDATE, (data, set_data) => {
       this.discord_client.leave_voice_channel(data.discord.guild_id)
-      this._log(`left voice channel: ${data.discord.voice_channel_name}`, data.discord, msg.user_id)
+      this._log(`left voice channel: ${data.discord.voice_channel_name} `, data.discord, msg.user_id)
       set_data(['discord', 'voice_channel_id'], null)
       set_data(['discord', 'voice_channel_name'], null)
       return true
@@ -348,12 +393,11 @@ class HardPoint {
   event_game_end = ({ canceled }) => {
     return this.sm.push_event(EVENT.GAME_DONE, (data, set_data) => {
       if (canceled) {
-        this._log('the game was canceled early')
-        return
+        this._log('the game was canceled early', data.discord)
       }
 
       const game_summary =
-        `Game complete. Summary:\n` +
+        `Game complete.Summary: \n` +
         `[${this.get_clock_time_string(data.game_timer)}] | ` +
         `Red ${data.red_team_score} vs ${data.blue_team_score} Blue`
       this._log(game_summary, { ...data.discord, 'no_voice': true })
@@ -364,7 +408,7 @@ class HardPoint {
         this._log(`Game over, blue wins by ${data.blue_team_score - data.red_team_score} points`, data.discord)
       } else {
         if (data.red_team_score > data.blue_team_score) {
-          this._log(`Game over, tied at ${data.blue_team_score}`, data.discord)
+          this._log(`Game over, tied at ${data.blue_team_score} `, data.discord)
         }
       }
 
@@ -377,9 +421,9 @@ class HardPoint {
   }
 
   event_help = (msg) => {
-    const reply = `Available Commands:` +
-      `- connect - moves system to connected state. starts accepting commands` +
-      `- disconnect - moves system to disconnected state. stops accepting commands (except connect)`
+    const reply = `Available Commands: ` +
+      `- connect - moves system to connected state.starts accepting commands` +
+      `- disconnect - moves system to disconnected state.stops accepting commands(except connect)`
     this._log(reply, msg, msg.user_id)
   }
 
@@ -393,7 +437,7 @@ class HardPoint {
 
   event_player_list = (msg) => {
     this.sm.push_event(EVENT.SETTINGS_UPDATE, (data, set_data) => {
-      this._log(`${JSON.stringify(data.players, null, 4)}`, data.discord, msg.user)
+      this._log(`${JSON.stringify(data.players, null, 4)} `, { ...data.discord, 'no_voice': true }, msg.user)
       return true
     })
   }
@@ -427,7 +471,7 @@ class HardPoint {
       return this.event_player_set(msg)
     }
 
-    this._log(`player command must be followed by one of: ${valid_cmds}`, data.discord, msg.user_id)
+    this._log(`player command must be followed by one of: ${valid_cmds} `, data.discord, msg.user_id)
   }
 
   event_player_set = (msg) => {
@@ -439,12 +483,12 @@ class HardPoint {
     if (args.hasOwnProperty('team')) {
       this.sm.push_event(EVENT.SETTINGS_UPDATE, (data, set_data) => {
         if (!data.players.hasOwnProperty(args.name)) {
-          this._log(`player was never added [${args.name}]`, data.discord, msg.user_id)
+          this._log(`player was never added[${args.name}]`, data.discord, msg.user_id)
           return true
         }
 
         if ((args.team !== 'red') && (args.team !== 'blue')) {
-          this._log(`team must be blue or red [${args.team}]`, data.discord, msg.user_id)
+          this._log(`team must be blue or red[${args.team}]`, data.discord, msg.user_id)
           return
         }
 
@@ -457,12 +501,12 @@ class HardPoint {
     if (args.hasOwnProperty('alias')) {
       this.sm.push_event(EVENT.SETTINGS_UPDATE, (data, set_data) => {
         if (!data.players.hasOwnProperty(args.name)) {
-          this._log(`player was never added [${args.name}]`, data.discord, msg.user_id)
+          this._log(`player was never added[${args.name}]`, data.discord, msg.user_id)
           return true
         }
 
         set_data(['players', args.name, 'alias'], args.alias)
-        this._log(`player [${args.name}]'s alias is now [${args.alias}]`, data.discord, msg.user_id)
+        this._log(`alias for player [${args.name}] is now [${args.alias}]`, data.discord, msg.user_id)
         return true
       })
     }
@@ -554,7 +598,17 @@ class HardPoint {
   }
 
   event_release = (msg) => {
-    return this._event_capture_or_release(msg, false)
+    return this.sm.push_event(EVENT.GAME_UPDATE, (data, set_data) => {
+      const player_name = msg.args['name'] ?? msg.user_name
+      const player = data.players[player_name]
+      if (player === undefined) {
+        return
+      }
+
+      this._log(`${player.alias} is not capturing the hardpoint`, { ...data.discord, 'no_voice': true })
+      set_data(['players', player_name, 'is_capturing'], false)
+      return true
+    })
   }
 
   event_repeat_spawn = (msg) => {
@@ -605,6 +659,7 @@ class HardPoint {
 
   event_start = (msg) => {
     return this.sm.push_event(EVENT.START, (data, set_data, get_data) => {
+      console.log(data.discord)
       if (data.discord.voice_channel_id === null || data.discord.voice_channel_name === null) {
         this._log(`Can't start until bot is attached a voice channel`, data.discord, msg.user)
         return false
@@ -627,7 +682,7 @@ class HardPoint {
       set_data('clock', score_interval_handle)
       set_data('hardpoint_clock', hardpoint_rotation_interval_handle)
 
-      this._log(`The game has been started!`, data.discord, msg.user)
+      this._log(`The first hard point is ${data.active_point}`, data.discord, msg.user)
 
       for (const player_name in data.players) {
         set_data(['players', player_name, 'deaths'], 0)
